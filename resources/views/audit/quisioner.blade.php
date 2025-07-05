@@ -1,0 +1,519 @@
+<x-app-layout>
+    <x-slot name="header">
+        <div class="flex items-center justify-between">
+            <h2 class="text-xl font-bold leading-tight text-gray-700 dark:text-sky-300">
+                {{ __('Jawab Kuesioner - Level: ') . ($level->nama_level ?? 'Belum Ditentukan') }}
+            </h2>
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+                <span id="progress-text">0 / {{ $quisioners->count() }} Pertanyaan</span>
+            </div>
+        </div>
+    </x-slot>
+
+    <style>
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0)
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn .5s ease-out forwards;
+            opacity: 0;
+        }
+
+        .animate-slideIn {
+            animation: slideIn .4s ease-out forwards;
+            opacity: 0;
+        }
+
+        .animate-pulse-subtle {
+            animation: pulse 2s infinite;
+        }
+
+        .animation-delay-100 {
+            animation-delay: .1s
+        }
+
+        .animation-delay-200 {
+            animation-delay: .2s
+        }
+
+        .animation-delay-300 {
+            animation-delay: .3s
+        }
+
+        .animation-delay-400 {
+            animation-delay: .4s
+        }
+
+        .animation-delay-500 {
+            animation-delay: .5s
+        }
+
+        .custom-radio {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 1.5em;
+            height: 1.5em;
+            border-radius: 50%;
+            border: 2px solid #e5e7eb;
+            outline: none;
+            transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            cursor: pointer;
+            background: white;
+        }
+
+        .dark .custom-radio {
+            border-color: #475569;
+            background: #334155;
+        }
+
+        .custom-radio:hover {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, .1);
+            transform: scale(1.05);
+        }
+
+        .custom-radio:checked {
+            border-color: #0ea5e9;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, .2);
+        }
+
+        .custom-radio:checked::before {
+            content: '';
+            display: block;
+            width: .75em;
+            height: .75em;
+            border-radius: 50%;
+            background: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            animation: radioCheck .2s ease-out forwards;
+        }
+
+        @keyframes radioCheck {
+            to {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .custom-radio:focus {
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, .4);
+        }
+
+        .question-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all .3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .question-card {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: #475569;
+            backdrop-filter: blur(10px);
+        }
+
+        .question-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .question-card:hover {
+            box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .question-card.answered {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+        }
+
+        .dark .question-card.answered {
+            border-color: #059669;
+            background: linear-gradient(135deg, rgba(5, 150, 105, 0.1), rgba(16, 185, 129, 0.1));
+        }
+
+        .option-button {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            transition: all .3s ease;
+            cursor: pointer;
+            min-width: 120px;
+            justify-content: center;
+            font-weight: 500;
+        }
+
+        .dark .option-button {
+            border-color: #475569;
+            background: #334155;
+        }
+
+        .option-button:hover {
+            border-color: #0ea5e9;
+            background: #f0f9ff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(14, 165, 233, 0.15);
+        }
+
+        .dark .option-button:hover {
+            border-color: #0ea5e9;
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        .option-button.selected {
+            border-color: #0ea5e9;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .dark .progress-bar {
+            background: #475569;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #06b6d4);
+            transition: width .5s ease;
+            border-radius: 3px;
+        }
+
+        .submit-button {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            border: none;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .3s ease;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+        }
+
+        .submit-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+        }
+
+        .submit-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .completion-indicator {
+            /* Properti display akan diatur oleh JavaScript */
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-left: 1rem;
+        }
+
+        .option-descriptions {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .dark .option-descriptions {
+            background: rgba(30, 41, 59, 0.5);
+        }
+    </style>
+
+    <div class="min-h-screen py-8 bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-950 dark:to-slate-900">
+        <div class="max-w-6xl px-4 mx-auto sm:px-6 lg:px-8">
+
+            {{-- Breadcrumb Navigation --}}
+            <div class="mb-8 animate-fadeIn">
+                @include('audit.partials.breadcrumbs', [
+                    'breadcrumbs' => [
+                        ['title' => $cobitItem->nama_item, 'url' => route('audit.showCategories', $cobitItem->id)],
+                        [
+                            'title' => $kategori->nama,
+                            'url' => route('audit.showLevels', [$cobitItem->id, $kategori->id]),
+                        ],
+                        ['title' => $level->nama_level],
+                    ],
+                ])
+            </div>
+
+            {{-- Progress Bar --}}
+            <div class="mb-8 animate-fadeIn animation-delay-100">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Progress Kuesioner</span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400" id="progress-percentage">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+
+            {{-- Main Content --}}
+            <div class="space-y-6 animate-fadeIn animation-delay-200">
+                @if ($errors->any())
+                    <div
+                        class="p-4 mb-6 bg-red-100 border border-red-300 rounded-lg dark:bg-red-700/20 animate-slideIn">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                            <div class="font-semibold text-red-700 dark:text-red-300">Whoops! Ada yang salah.</div>
+                        </div>
+                        <ul class="mt-2 text-sm text-red-600 list-disc list-inside dark:text-red-400">
+                            @foreach ($errors->all() as $error)
+                                <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                <form id="quisionerForm" action="{{ route('jawaban.store', $level->id) }}" method="POST">
+                    @csrf
+                    @forelse ($quisioners as $index => $quisioner)
+                        @php $delayClass = 'animation-delay-' . (($index % 5) + 1) . '00'; @endphp
+                        <div class="question-card animate-slideIn {{ $delayClass }}"
+                            data-question-id="{{ $quisioner->id }}">
+                            <div class="flex items-start justify-between mb-6">
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-3">
+                                        <span
+                                            class="inline-flex items-center justify-center w-8 h-8 mr-3 text-sm font-bold text-white bg-blue-500 rounded-full">
+                                            {{ $loop->iteration }}
+                                        </span>
+                                        <h3 class="text-lg font-semibold text-gray-800 dark:text-sky-200">
+                                            {{ $quisioner->pertanyaan }}
+                                            <span class="ml-1 text-red-500">*</span>
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div class="hidden completion-indicator" id="indicator-{{ $quisioner->id }}">
+                                    <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd"
+                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                    Terjawab
+                                </div>
+                            </div>
+
+
+
+                            {{-- <div class="grid grid-cols-2 gap-4 sm:grid-cols-4"> --}}
+                            <div class="flex flex-wrap items-center justify-content-center gap-x-6 gap-y-3 sm:gap-x-8">
+                                {{-- Radio buttons for options --}}
+                                @foreach (['N', 'P', 'L', 'F'] as $option)
+                                    <label class="option-button" data-option="{{ $option }}">
+                                        <input type="radio" name="jawaban[{{ $quisioner->id }}]"
+                                            value="{{ $option }}" class="hidden" required>
+                                        <span class="text-lg font-semibold">{{ $option }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+
+                            {{-- Option descriptions --}}
+                            <div class="option-descriptions">
+                                <div class="text-sm text-gray-600 dark:text-gray-300">
+                                    <strong>Keterangan:</strong>
+                                    <span class="font-medium">N</span> = Tidak Ada,
+                                    <span class="font-medium">P</span> = Sebagian,
+                                    <span class="font-medium">L</span> = Lengkap,
+                                    <span class="font-medium">F</span> = Penuh
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <div
+                            class="p-12 text-center bg-white shadow-xl dark:bg-slate-800/70 dark:backdrop-blur-md rounded-xl">
+                            <div class="w-16 h-16 mx-auto mb-4 text-gray-400">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
+                                </svg>
+                            </div>
+                            <h3 class="mb-2 text-lg font-semibold text-gray-700 dark:text-gray-300">Tidak Ada Kuesioner
+                            </h3>
+                            <p class="text-gray-500 dark:text-slate-400">Tidak ada kuesioner untuk level ini.</p>
+                        </div>
+                    @endforelse
+
+                    @if ($quisioners->isNotEmpty())
+                        <div class="pt-8 mt-10 border-t dark:border-slate-700/50">
+                            <div class="flex flex-col items-center gap-4 sm:flex-row sm:justify-between sm:space-y-0">
+                                {{-- Status Keterisian --}}
+                                <div class="text-sm text-gray-600 dark:text-gray-400">
+                                    <span id="completion-status">Mohon lengkapi semua pertanyaan sebelum mengirim</span>
+                                </div>
+
+                                {{-- Grup Tombol Aksi --}}
+                                <div class="flex items-center w-full space-x-4 sm:w-auto">
+                                    {{-- Tombol Kembali --}}
+                                    <a href="{{ route('audit.showLevels', [$cobitItem->id, $kategori->id]) }}"
+                                        class="inline-flex items-center justify-center w-1/2 px-6 py-4 text-base font-semibold text-center text-gray-700 transition-all duration-200 bg-white border border-gray-300 shadow-sm sm:w-auto rounded-xl dark:bg-slate-800 dark:border-slate-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700">
+                                        <svg class="w-5 h-5 mr-2 -ml-1" xmlns="http://www.w3.org/2000/svg"
+                                            fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+                                        </svg>
+                                        Kembali
+                                    </a>
+
+                                    {{-- Tombol Kirim Jawaban --}}
+                                    <button type="submit" id="submit-btn" class="w-1/2 sm:w-auto submit-button"
+                                        disabled>
+                                        <span class="flex items-center justify-center">
+                                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor"
+                                                viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                            </svg>
+                                            Kirim
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('quisionerForm');
+            const submitBtn = document.getElementById('submit-btn');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            const progressPercentage = document.getElementById('progress-percentage');
+            const completionStatus = document.getElementById('completion-status');
+            const totalQuestions = {{ $quisioners->count() }};
+            let answeredQuestions = 0;
+
+            // Handle option selection
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const questionCard = this.closest('.question-card');
+                    const questionId = questionCard.getAttribute('data-question-id');
+                    const optionButtons = questionCard.querySelectorAll('.option-button');
+                    const indicator = document.getElementById(`indicator-${questionId}`);
+
+                    // Update visual state
+                    optionButtons.forEach(btn => btn.classList.remove('selected'));
+                    this.closest('.option-button').classList.add('selected');
+
+                    // Mark question as answered
+                    if (!questionCard.classList.contains('answered')) {
+                        questionCard.classList.add('answered');
+
+                        // --- AWAL PERUBAHAN ---
+                        indicator.classList.remove('hidden'); // Menghapus class 'hidden'
+                        indicator.classList.add(
+                            'inline-flex'
+                            ); // Menambahkan class 'inline-flex' untuk menampilkan elemen
+                        // --- AKHIR PERUBAHAN ---
+
+                        answeredQuestions++;
+                    }
+
+                    updateProgress();
+                });
+            });
+
+            function updateProgress() {
+                const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
+
+                progressFill.style.width = percentage + '%';
+                progressText.textContent = `${answeredQuestions} / ${totalQuestions} Pertanyaan`;
+                progressPercentage.textContent = percentage + '%';
+
+                if (answeredQuestions === totalQuestions) {
+                    submitBtn.disabled = false;
+                    submitBtn.classList.add('animate-pulse-subtle');
+                    completionStatus.textContent = 'Semua pertanyaan sudah terjawab! Anda dapat mengirim jawaban.';
+                    completionStatus.classList.add('text-green-600', 'dark:text-green-400');
+                } else {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.remove('animate-pulse-subtle');
+                    completionStatus.textContent =
+                        `Mohon lengkapi ${totalQuestions - answeredQuestions} pertanyaan yang tersisa`;
+                    completionStatus.classList.remove('text-green-600', 'dark:text-green-400');
+                }
+            }
+
+            // Form submission with loading state
+            form.addEventListener('submit', function(e) {
+                submitBtn.innerHTML = `
+                    <span class="flex items-center">
+                        <svg class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Mengirim...
+                    </span>
+                `;
+                submitBtn.disabled = true;
+            });
+        });
+    </script>
+</x-app-layout>
