@@ -19,8 +19,8 @@ use App\Http\Controllers\Admin\ProgressController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\ResubmissionRequestController;
-
-
+use App\Mail\NewUserForApproval;
+use Illuminate\Support\Facades\Mail;
 
 // Main routes
 Route::get('/', function () {
@@ -47,6 +47,30 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
+Route::get('/test-email', function () {
+    // Ambil user admin pertama sebagai contoh penerima
+    $admin = User::where('role', 'admin')->first();
+
+    // Jika tidak ada admin, buat user dummy untuk tes
+    if (!$admin) {
+        return "Gagal: Tidak ada user dengan role 'admin' di database untuk dijadikan penerima tes.";
+    }
+
+    // Buat user dummy sebagai pendaftar baru
+    $dummyUser = new User([
+        'name' => 'Test User',
+        'email' => 'test@example.com'
+    ]);
+
+    try {
+        // Kirim email menggunakan Mailable Anda
+        Mail::to($admin->email)->send(new NewUserForApproval($dummyUser));
+        return "Email tes berhasil dikirim ke " . $admin->email . "! Silakan periksa inbox Mailtrap Anda.";
+    } catch (\Exception $e) {
+        // Jika ada error, tampilkan pesannya
+        return "Gagal mengirim email. Error: " . $e->getMessage();
+    }
+});
 // Admin routes - hanya untuk role admin
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('admin/progress', [ProgressController::class, 'index'])->name('admin.progress.index');
