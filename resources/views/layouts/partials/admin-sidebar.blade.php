@@ -1,5 +1,5 @@
 <aside
-    class="sticky top-0 flex flex-col w-64 h-screen overflow-y-auto bg-white border-r dark:bg-gray-800 dark:border-gray-700">
+    class="sticky top-0 z-20 flex flex-col w-64 h-screen overflow-y-auto bg-white border-r dark:bg-gray-800 dark:border-gray-700">
     <!-- Logo -->
     <div class="flex items-center justify-center px-4 py-8 border-b dark:border-gray-700">
         <a href="{{ route('admin.dashboard') }}" class="flex items-center">
