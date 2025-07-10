@@ -329,6 +329,8 @@
 
                 <form id="quisionerForm" action="{{ route('jawaban.store', $level->id) }}" method="POST">
                     @csrf
+                    <input type="hidden" name="user_confirmation" id="user_confirmation_input" value="tidak_setuju">
+
                     @forelse ($quisioners as $index => $quisioner)
                         @php $delayClass = 'animation-delay-' . (($index % 5) + 1) . '00'; @endphp
                         <div class="question-card animate-slideIn {{ $delayClass }}"
@@ -439,8 +441,35 @@
         </div>
     </div>
 
+    {{-- Modal Konfirmasi --}}
+    <div id="confirmationModal"
+        class="fixed inset-0 z-50 flex items-center justify-center hidden transition-opacity duration-300 ease-in-out opacity-0 bg-slate-900/80 backdrop-blur-sm">
+        <div class="max-w-md p-6 mx-4 transition-all duration-300 ease-in-out transform scale-95 bg-white shadow-2xl opacity-0 sm:p-8 dark:bg-gradient-to-br dark:from-slate-800 dark:to-blue-950/90 rounded-xl dark:border dark:border-sky-700/50"
+            x-show="open" {{-- Jika menggunakan Alpine untuk transisi modal --}} x-transition:enter="ease-out duration-300"
+            x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-90">
+            <h3 class="mb-5 text-xl font-bold text-gray-800 dark:text-sky-300">Konfirmasi Penilaian</h3>
+            <p class="mb-8 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                Berdasarkan penilaian yang dilakukan, apakah saudara setuju aktivitas tersebut diatas memiliki
+                capability level? (Semua aktivitas harus bernilai F untuk capability level tertinggi).
+            </p>
+            <div class="flex flex-col justify-end space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
+                <button type="button" id="confirmNo"
+                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500 rounded-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-slate-500 transition-all duration-300 ease-in-out transform hover:scale-105">
+                    Tidak Setuju
+                </button>
+                <button type="button" id="confirmYes"
+                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 rounded-lg shadow-lg hover:shadow-xl hover:shadow-sky-500/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-blue-500 transition-all duration-300 ease-in-out transform hover:scale-105">
+                    Setuju
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // --- KUMPULAN SEMUA ELEMEN ---
             const form = document.getElementById('quisionerForm');
             const submitBtn = document.getElementById('submit-btn');
             const progressFill = document.getElementById('progress-fill');
@@ -448,40 +477,44 @@
             const progressPercentage = document.getElementById('progress-percentage');
             const completionStatus = document.getElementById('completion-status');
             const totalQuestions = {{ $quisioners->count() }};
+
+            // Elemen untuk Modal
+            const modal = document.getElementById('confirmationModal');
+            const modalPanel = modal ? modal.querySelector('div') : null;
+            const confirmYesButton = document.getElementById('confirmYes');
+            const confirmNoButton = document.getElementById('confirmNo');
+            const userConfirmationInput = document.getElementById('user_confirmation_input');
+
             let answeredQuestions = 0;
 
-            // Handle option selection
-            document.querySelectorAll('input[type="radio"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    const questionCard = this.closest('.question-card');
-                    const questionId = questionCard.getAttribute('data-question-id');
-                    const optionButtons = questionCard.querySelectorAll('.option-button');
-                    const indicator = document.getElementById(`indicator-${questionId}`);
+            // Jika tidak ada kuesioner, hentikan eksekusi skrip
+            if (totalQuestions === 0) {
+                return;
+            }
 
-                    // Update visual state
-                    optionButtons.forEach(btn => btn.classList.remove('selected'));
-                    this.closest('.option-button').classList.add('selected');
+            // --- FUNGSI UNTUK MENGELOLA MODAL ---
+            function showModal() {
+                if (!modal || !modalPanel) return;
+                modal.classList.remove('hidden');
+                modal.style.display = 'flex';
+                modal.offsetHeight; // Trigger reflow untuk memulai transisi
+                modal.classList.remove('opacity-0');
+                modalPanel.classList.remove('opacity-0', 'scale-95');
+            }
 
-                    // Mark question as answered
-                    if (!questionCard.classList.contains('answered')) {
-                        questionCard.classList.add('answered');
+            function hideModal() {
+                if (!modal || !modalPanel) return;
+                modal.classList.add('opacity-0');
+                modalPanel.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.style.display = 'none';
+                }, 300); // Sesuaikan dengan durasi transisi
+            }
 
-                        // --- AWAL PERUBAHAN ---
-                        indicator.classList.remove('hidden'); // Menghapus class 'hidden'
-                        indicator.classList.add(
-                            'inline-flex'
-                            ); // Menambahkan class 'inline-flex' untuk menampilkan elemen
-                        // --- AKHIR PERUBAHAN ---
-
-                        answeredQuestions++;
-                    }
-
-                    updateProgress();
-                });
-            });
-
+            // --- FUNGSI UNTUK UPDATE PROGRESS BAR ---
             function updateProgress() {
-                const percentage = Math.round((answeredQuestions / totalQuestions) * 100);
+                const percentage = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
 
                 progressFill.style.width = percentage + '%';
                 progressText.textContent = `${answeredQuestions} / ${totalQuestions} Pertanyaan`;
@@ -501,18 +534,70 @@
                 }
             }
 
-            // Form submission with loading state
-            form.addEventListener('submit', function(e) {
+            // --- EVENT LISTENER UNTUK PILIHAN JAWABAN ---
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const questionCard = this.closest('.question-card');
+                    const questionId = questionCard.getAttribute('data-question-id');
+                    const optionButtons = questionCard.querySelectorAll('.option-button');
+                    const indicator = document.getElementById(`indicator-${questionId}`);
+
+                    optionButtons.forEach(btn => btn.classList.remove('selected'));
+                    this.closest('.option-button').classList.add('selected');
+
+                    if (!questionCard.classList.contains('answered')) {
+                        questionCard.classList.add('answered');
+                        indicator.classList.remove('hidden');
+                        indicator.classList.add('inline-flex');
+                        answeredQuestions++;
+                    }
+                    updateProgress();
+                });
+            });
+
+            // --- [FIX] LOGIKA UTAMA UNTUK SUBMIT FORM DAN MODAL ---
+
+            // 1. Saat tombol "Kirim" di-klik
+            submitBtn.addEventListener('click', function(event) {
+                // Mencegah form terkirim secara langsung
+                event.preventDefault();
+
+                // Cek validitas form secara manual (meski tombol sudah enable, ini pengaman ganda)
+                if (!form.checkValidity()) {
+                    form.reportValidity(); // Tampilkan pesan error browser jika ada yang belum diisi
+                    return;
+                }
+
+                // Jika valid, tampilkan modal konfirmasi
+                showModal();
+            });
+
+            // 2. Saat tombol "Tidak Setuju" di modal di-klik
+            confirmNoButton.addEventListener('click', function() {
+                hideModal(); // Cukup tutup modal
+            });
+
+            // 3. Saat tombol "Setuju" di modal di-klik
+            confirmYesButton.addEventListener('click', function() {
+                // Ubah nilai input tersembunyi menjadi 'setuju'
+                if (userConfirmationInput) {
+                    userConfirmationInput.value = 'setuju';
+                }
+
+                // Tampilkan status loading pada tombol kirim
                 submitBtn.innerHTML = `
-                    <span class="flex items-center">
-                        <svg class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Mengirim...
-                    </span>
-                `;
+                <span class="flex items-center">
+                    <svg class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Mengirim...
+                </span>
+            `;
                 submitBtn.disabled = true;
+
+                // Kirim form secara programmatic
+                form.submit();
             });
         });
     </script>
