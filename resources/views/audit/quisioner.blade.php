@@ -441,13 +441,14 @@
         </div>
     </div>
 
+
+
+
     {{-- Modal Konfirmasi --}}
     <div id="confirmationModal"
         class="fixed inset-0 z-50 flex items-center justify-center hidden transition-opacity duration-300 ease-in-out bg-slate-900/80 backdrop-blur-sm">
-
         <div
             class="relative w-full max-w-md p-6 mx-4 transition-all duration-300 ease-in-out transform bg-white shadow-2xl sm:p-8 dark:bg-gradient-to-br dark:from-slate-800 dark:to-blue-950/90 rounded-xl dark:border dark:border-sky-700/50">
-
             <button type="button" id="closeModalBtn"
                 class="absolute p-1 text-gray-400 transition-colors rounded-full top-4 right-4 hover:bg-gray-200 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 dark:focus:ring-offset-slate-800">
                 <span class="sr-only">Tutup modal</span>
@@ -465,11 +466,11 @@
             </p>
             <div class="flex flex-col justify-end space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
                 <button type="button" id="confirmNo"
-                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-800 rounded-lg shadow-sm focus:outline-none transition-all duration-300">
+                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-800 bg-gray-200 dark:text-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500 rounded-lg shadow-sm focus:outline-none transition-all duration-300">
                     Tidak Setuju
                 </button>
                 <button type="button" id="confirmYes"
-                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white rounded-lg shadow-lg focus:outline-none transition-all duration-300">
+                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 rounded-lg shadow-lg focus:outline-none transition-all duration-300">
                     Setuju
                 </button>
             </div>
@@ -480,10 +481,15 @@
         document.addEventListener('DOMContentLoaded', function() {
             // --- KUMPULAN SEMUA ELEMEN ---
             const form = document.getElementById('quisionerForm');
+            // Hentikan jika form tidak ada di halaman ini
+            if (!form) {
+                return;
+            }
+
             const submitBtn = document.getElementById('submit-btn');
             const totalQuestions = {{ $quisioners->count() }};
 
-            // Elemen Progress (jika ada)
+            // Elemen Progress
             const progressFill = document.getElementById('progress-fill');
             const progressText = document.getElementById('progress-text');
             const progressPercentage = document.getElementById('progress-percentage');
@@ -491,7 +497,6 @@
 
             // Elemen untuk Modal
             const modal = document.getElementById('confirmationModal');
-            const modalPanel = modal ? modal.querySelector('div') : null;
             const confirmYesButton = document.getElementById('confirmYes');
             const confirmNoButton = document.getElementById('confirmNo');
             const userConfirmationInput = document.getElementById('user_confirmation_input');
@@ -499,25 +504,42 @@
 
             let answeredQuestions = 0;
 
-            if (totalQuestions === 0) return;
+            // Jangan jalankan apapun jika tidak ada kuesioner
+            if (totalQuestions === 0) {
+                return;
+            }
 
-            // --- FUNGSI UNTUK MENGELOLA MODAL ---
+            // --- FUNGSI UNTUK MENGELOLA MODAL (DENGAN ANIMASI) ---
             function showModal() {
-                if (!modal || !modalPanel) return;
-                modal.classList.remove('hidden');
+                if (!modal) return;
+                const modalPanel = modal.querySelector('div.relative'); // Panel utama modal
+
                 modal.style.display = 'flex';
+                modal.classList.remove('hidden');
+                // Trigger reflow agar transisi CSS berjalan dengan benar
                 modal.offsetHeight;
+
                 modal.classList.remove('opacity-0');
-                if (modalPanel) modalPanel.classList.remove('opacity-0', 'scale-95');
+                if (modalPanel) {
+                    // Hapus class yang membuat panel mengecil/transparan
+                    modalPanel.classList.remove('opacity-0', 'scale-95');
+                }
             }
 
             function hideModal() {
-                if (!modal || !modalPanel) return;
+                if (!modal) return;
+                const modalPanel = modal.querySelector('div.relative');
+
                 modal.classList.add('opacity-0');
-                if (modalPanel) modalPanel.classList.add('opacity-0', 'scale-95');
+                if (modalPanel) {
+                    // Tambahkan class untuk memulai animasi keluar
+                    modalPanel.classList.add('opacity-0', 'scale-95');
+                }
+
+                // Sembunyikan elemen setelah animasi selesai (300ms)
                 setTimeout(() => {
-                    modal.classList.add('hidden');
                     modal.style.display = 'none';
+                    modal.classList.add('hidden');
                 }, 300);
             }
 
@@ -529,14 +551,14 @@
                 if (progressPercentage) progressPercentage.textContent = percentage + '%';
 
                 if (answeredQuestions === totalQuestions) {
-                    submitBtn.disabled = false;
+                    if (submitBtn) submitBtn.disabled = false;
                     if (completionStatus) {
                         completionStatus.textContent =
                             'Semua pertanyaan sudah terjawab! Anda dapat mengirim jawaban.';
                         completionStatus.classList.add('text-green-600', 'dark:text-green-400');
                     }
                 } else {
-                    submitBtn.disabled = true;
+                    if (submitBtn) submitBtn.disabled = true;
                     if (completionStatus) {
                         completionStatus.textContent =
                             `Mohon lengkapi ${totalQuestions - answeredQuestions} pertanyaan yang tersisa`;
@@ -545,95 +567,25 @@
                 }
             }
 
-
-            if (submitBtn) {
-                submitBtn.addEventListener('click', function(event) {
-                    event.preventDefault();
-
-                    const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
-                    let allAnswersAreF = true;
-
-                    if (checkedRadios.length !== totalQuestions) {
-                        form.reportValidity();
-                        return;
-                    }
-
-                    for (const radio of checkedRadios) {
-                        if (radio.value !== 'F') {
-                            allAnswersAreF = false;
-                            break;
-                        }
-                    }
-
-                    // Definisikan kelas untuk setiap state tombol
-                    const primaryClasses = ['bg-gradient-to-r', 'from-sky-500', 'to-blue-600',
-                        'hover:from-sky-600', 'hover:to-blue-700', 'text-white'
-                    ];
-                    const secondaryClasses = ['bg-gray-200', 'dark:bg-slate-600', 'hover:bg-gray-300',
-                        'dark:hover:bg-slate-500', 'text-gray-800', 'dark:text-gray-200'
-                    ];
-                    const disabledClasses = ['opacity-50', 'cursor-not-allowed'];
-
-                    if (allAnswersAreF) {
-                        // KONDISI: SEMUA JAWABAN 'F' -> Tombol 'Setuju' menjadi utama
-                        confirmYesButton.disabled = false;
-                        confirmYesButton.classList.remove(...disabledClasses, ...secondaryClasses);
-                        confirmYesButton.classList.add(...primaryClasses);
-                        confirmYesButton.title = "Konfirmasi persetujuan karena semua kriteria terpenuhi.";
-
-                        confirmNoButton.disabled = true;
-                        confirmNoButton.classList.remove(...primaryClasses);
-                        confirmNoButton.classList.add(...secondaryClasses, ...disabledClasses);
-                        confirmNoButton.title = "Tidak dapat dipilih karena semua jawaban adalah 'F'.";
-
-                    } else {
-                        // KONDISI: TIDAK SEMUA JAWABAN 'F' -> Tombol 'Tidak Setuju' menjadi utama
-                        confirmNoButton.disabled = false;
-                        confirmNoButton.classList.remove(...disabledClasses, ...secondaryClasses);
-                        confirmNoButton.classList.add(...primaryClasses); // Beri warna biru
-                        confirmNoButton.title = "Konfirmasi bahwa level ini belum tercapai sepenuhnya.";
-
-                        confirmYesButton.disabled = true;
-                        confirmYesButton.classList.remove(...primaryClasses);
-                        confirmYesButton.classList.add(...secondaryClasses, ...disabledClasses);
-                        confirmYesButton.title = "Tidak dapat dipilih karena tidak semua jawaban 'F'.";
-                    }
-                    showModal();
-                });
-            }
-
-            // --- [TAMBAHAN] Atur Tampilan Pilihan yang Sudah Ada Saat Halaman Dimuat ---
+            // Atur Tampilan Pilihan yang Sudah Ada Saat Halaman Dimuat
             document.querySelectorAll('input[type="radio"]:checked').forEach(checkedRadio => {
-                // Tambahkan class 'selected' pada label dari radio button yang sudah terpilih
                 const parentLabel = checkedRadio.closest('.option-button');
-                if (parentLabel) {
-                    parentLabel.classList.add('selected');
-                }
-
-                // Tandai juga card-nya sebagai sudah terjawab
+                if (parentLabel) parentLabel.classList.add('selected');
                 const parentCard = checkedRadio.closest('.question-card');
                 if (parentCard && !parentCard.classList.contains('answered')) {
                     parentCard.classList.add('answered');
-                    answeredQuestions++; // Update counter agar progress bar sesuai
+                    answeredQuestions++;
                 }
             });
-            // Panggil updateProgress sekali di awal untuk menginisialisasi bar dan tombol submit
             updateProgress();
-            // --- Akhir Tambahan ---
 
-
-            // --- EVENT LISTENER UNTUK PILIHAN JAWABAN (saat diklik) ---
+            // Event listener untuk pilihan jawaban
             document.querySelectorAll('input[type="radio"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const questionCard = this.closest('.question-card');
-
-                    // Hapus 'selected' dari semua tombol di kartu ini
                     const optionButtons = questionCard.querySelectorAll('.option-button');
                     optionButtons.forEach(btn => btn.classList.remove('selected'));
-
-                    // Tambahkan 'selected' ke tombol yang baru diklik
                     this.closest('.option-button').classList.add('selected');
-
                     if (!questionCard.classList.contains('answered')) {
                         questionCard.classList.add('answered');
                         answeredQuestions++;
@@ -642,83 +594,36 @@
                 });
             });
 
-            // --- [LOGIKA BARU] SAAT TOMBOL KIRIM DIKLIK ---
-            submitBtn.addEventListener('click', function(event) {
-                event.preventDefault();
-
-                // 1. Cek apakah semua jawaban yang dipilih adalah 'F'
-                const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
-                let allAnswersAreF = true;
-
-                // Pastikan semua pertanyaan sudah dijawab sebelum pengecekan
-                if (checkedRadios.length !== totalQuestions) {
-                    form.reportValidity();
-                    return;
-                }
-
-                for (const radio of checkedRadios) {
-                    if (radio.value !== 'F') {
-                        allAnswersAreF = false;
-                        break; // Keluar dari loop jika sudah ditemukan satu jawaban bukan 'F'
+            // Event listener untuk tombol kirim utama
+            if (submitBtn) {
+                submitBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return;
                     }
-                }
+                    showModal();
+                });
+            }
 
-                // 2. Atur kondisi tombol di dalam modal berdasarkan hasil pengecekan
-                const disabledClasses = ['opacity-50', 'cursor-not-allowed'];
-                const enabledClassesYes = ['bg-gradient-to-r', 'from-sky-500', 'to-blue-600',
-                    'hover:from-sky-600', 'hover:to-blue-700'
-                ];
-                const enabledClassesNo = ['bg-gray-200', 'dark:bg-slate-600', 'hover:bg-gray-300',
-                    'dark:hover:bg-slate-500'
-                ];
-
-
-                if (allAnswersAreF) {
-                    // KONDISI: SEMUA JAWABAN 'F' -> HANYA BOLEH SETUJU
-                    confirmYesButton.disabled = false;
-                    confirmYesButton.classList.remove(...disabledClasses);
-                    confirmYesButton.classList.add(...enabledClassesYes);
-                    confirmYesButton.title = "Konfirmasi persetujuan karena semua kriteria terpenuhi.";
-
-                    confirmNoButton.disabled = true;
-                    confirmNoButton.classList.add(...disabledClasses);
-                    confirmNoButton.classList.remove(...enabledClassesNo);
-                    confirmNoButton.title = "Tidak dapat dipilih karena semua jawaban adalah 'F'.";
-
-                } else {
-                    // KONDISI: ADA JAWABAN BUKAN 'F' -> HANYA BOLEH TIDAK SETUJU
-                    confirmYesButton.disabled = true;
-                    confirmYesButton.classList.add(...disabledClasses);
-                    confirmYesButton.classList.remove(...enabledClassesYes);
-                    confirmYesButton.title = "Tidak dapat dipilih karena tidak semua jawaban 'F'.";
-
-                    confirmNoButton.disabled = false;
-                    confirmNoButton.classList.remove(...disabledClasses);
-                    confirmNoButton.classList.add(...enabledClassesNo);
-                    confirmNoButton.title = "Konfirmasi bahwa level ini belum tercapai sepenuhnya.";
-                }
-
-                // 3. Tampilkan modal setelah tombol diatur
-                showModal();
-            });
-
-            // --- [MODIFIKASI] LOGIKA TOMBOL MODAL ---
-
-            // Tombol "Setuju"
-            confirmYesButton.addEventListener('click', function() {
-                if (this.disabled) return; // Abaikan klik jika tombol nonaktif
-                userConfirmationInput.value = 'setuju';
-                form.submit();
-            });
-
-            // Tombol "Tidak Setuju"
-            confirmNoButton.addEventListener('click', function() {
-                if (this.disabled) return; // Abaikan klik jika tombol nonaktif
-                userConfirmationInput.value = 'tidak_setuju';
-                form.submit();
-            });
-            // Tombol 'X' untuk menutup modal
-            closeModalBtn.addEventListener('click', hideModal);
+            // Event Listener untuk SEMUA Tombol Modal
+            if (confirmYesButton) {
+                confirmYesButton.addEventListener('click', function() {
+                    if (userConfirmationInput) userConfirmationInput.value = 'setuju';
+                    form.submit();
+                });
+            }
+            if (confirmNoButton) {
+                confirmNoButton.addEventListener('click', function() {
+                    if (userConfirmationInput) userConfirmationInput.value = 'tidak_setuju';
+                    form.submit();
+                });
+            }
+            if (closeModalBtn) {
+                closeModalBtn.addEventListener('click', function() {
+                    hideModal();
+                });
+            }
         });
     </script>
 </x-app-layout>
