@@ -443,24 +443,33 @@
 
     {{-- Modal Konfirmasi --}}
     <div id="confirmationModal"
-        class="fixed inset-0 z-50 flex items-center justify-center hidden transition-opacity duration-300 ease-in-out opacity-0 bg-slate-900/80 backdrop-blur-sm">
-        <div class="max-w-md p-6 mx-4 transition-all duration-300 ease-in-out transform scale-95 bg-white shadow-2xl opacity-0 sm:p-8 dark:bg-gradient-to-br dark:from-slate-800 dark:to-blue-950/90 rounded-xl dark:border dark:border-sky-700/50"
-            x-show="open" {{-- Jika menggunakan Alpine untuk transisi modal --}} x-transition:enter="ease-out duration-300"
-            x-transition:enter-start="opacity-0 scale-90" x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 scale-100"
-            x-transition:leave-end="opacity-0 scale-90">
+        class="fixed inset-0 z-50 flex items-center justify-center hidden transition-opacity duration-300 ease-in-out bg-slate-900/80 backdrop-blur-sm">
+
+        <div
+            class="relative w-full max-w-md p-6 mx-4 transition-all duration-300 ease-in-out transform bg-white shadow-2xl sm:p-8 dark:bg-gradient-to-br dark:from-slate-800 dark:to-blue-950/90 rounded-xl dark:border dark:border-sky-700/50">
+
+            <button type="button" id="closeModalBtn"
+                class="absolute p-1 text-gray-400 transition-colors rounded-full top-4 right-4 hover:bg-gray-200 dark:hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 dark:focus:ring-offset-slate-800">
+                <span class="sr-only">Tutup modal</span>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg>
+            </button>
             <h3 class="mb-5 text-xl font-bold text-gray-800 dark:text-sky-300">Konfirmasi Penilaian</h3>
             <p class="mb-8 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
-                Berdasarkan penilaian yang dilakukan, apakah saudara setuju aktivitas tersebut diatas memiliki
-                capability level? (Semua aktivitas harus bernilai F untuk capability level tertinggi).
+                Berdasarkan penilaian yang dilakukan, apakah saudara setuju aktivitas tersebut diatas
+                memiliki capability level? (Semua aktivitas harus bernilai F untuk capability level
+                tertinggi).
             </p>
             <div class="flex flex-col justify-end space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4">
                 <button type="button" id="confirmNo"
-                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-800 dark:text-gray-200 bg-gray-200 dark:bg-slate-600 hover:bg-gray-300 dark:hover:bg-slate-500 rounded-lg shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-slate-500 transition-all duration-300 ease-in-out transform hover:scale-105">
+                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-gray-800 rounded-lg shadow-sm focus:outline-none transition-all duration-300">
                     Tidak Setuju
                 </button>
                 <button type="button" id="confirmYes"
-                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-600 hover:to-blue-700 rounded-lg shadow-lg hover:shadow-xl hover:shadow-sky-500/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 focus:ring-blue-500 transition-all duration-300 ease-in-out transform hover:scale-105">
+                    class="w-full sm:w-auto px-5 py-2.5 text-sm font-medium text-white rounded-lg shadow-lg focus:outline-none transition-all duration-300">
                     Setuju
                 </button>
             </div>
@@ -472,11 +481,13 @@
             // --- KUMPULAN SEMUA ELEMEN ---
             const form = document.getElementById('quisionerForm');
             const submitBtn = document.getElementById('submit-btn');
+            const totalQuestions = {{ $quisioners->count() }};
+
+            // Elemen Progress (jika ada)
             const progressFill = document.getElementById('progress-fill');
             const progressText = document.getElementById('progress-text');
             const progressPercentage = document.getElementById('progress-percentage');
             const completionStatus = document.getElementById('completion-status');
-            const totalQuestions = {{ $quisioners->count() }};
 
             // Elemen untuk Modal
             const modal = document.getElementById('confirmationModal');
@@ -484,121 +495,230 @@
             const confirmYesButton = document.getElementById('confirmYes');
             const confirmNoButton = document.getElementById('confirmNo');
             const userConfirmationInput = document.getElementById('user_confirmation_input');
+            const closeModalBtn = document.getElementById('closeModalBtn');
 
             let answeredQuestions = 0;
 
-            // Jika tidak ada kuesioner, hentikan eksekusi skrip
-            if (totalQuestions === 0) {
-                return;
-            }
+            if (totalQuestions === 0) return;
 
             // --- FUNGSI UNTUK MENGELOLA MODAL ---
             function showModal() {
                 if (!modal || !modalPanel) return;
                 modal.classList.remove('hidden');
                 modal.style.display = 'flex';
-                modal.offsetHeight; // Trigger reflow untuk memulai transisi
+                modal.offsetHeight;
                 modal.classList.remove('opacity-0');
-                modalPanel.classList.remove('opacity-0', 'scale-95');
+                if (modalPanel) modalPanel.classList.remove('opacity-0', 'scale-95');
             }
 
             function hideModal() {
                 if (!modal || !modalPanel) return;
                 modal.classList.add('opacity-0');
-                modalPanel.classList.add('opacity-0', 'scale-95');
+                if (modalPanel) modalPanel.classList.add('opacity-0', 'scale-95');
                 setTimeout(() => {
                     modal.classList.add('hidden');
                     modal.style.display = 'none';
-                }, 300); // Sesuaikan dengan durasi transisi
+                }, 300);
             }
 
             // --- FUNGSI UNTUK UPDATE PROGRESS BAR ---
             function updateProgress() {
                 const percentage = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
-
-                progressFill.style.width = percentage + '%';
-                progressText.textContent = `${answeredQuestions} / ${totalQuestions} Pertanyaan`;
-                progressPercentage.textContent = percentage + '%';
+                if (progressFill) progressFill.style.width = percentage + '%';
+                if (progressText) progressText.textContent = `${answeredQuestions} / ${totalQuestions} Pertanyaan`;
+                if (progressPercentage) progressPercentage.textContent = percentage + '%';
 
                 if (answeredQuestions === totalQuestions) {
                     submitBtn.disabled = false;
-                    submitBtn.classList.add('animate-pulse-subtle');
-                    completionStatus.textContent = 'Semua pertanyaan sudah terjawab! Anda dapat mengirim jawaban.';
-                    completionStatus.classList.add('text-green-600', 'dark:text-green-400');
+                    if (completionStatus) {
+                        completionStatus.textContent =
+                            'Semua pertanyaan sudah terjawab! Anda dapat mengirim jawaban.';
+                        completionStatus.classList.add('text-green-600', 'dark:text-green-400');
+                    }
                 } else {
                     submitBtn.disabled = true;
-                    submitBtn.classList.remove('animate-pulse-subtle');
-                    completionStatus.textContent =
-                        `Mohon lengkapi ${totalQuestions - answeredQuestions} pertanyaan yang tersisa`;
-                    completionStatus.classList.remove('text-green-600', 'dark:text-green-400');
+                    if (completionStatus) {
+                        completionStatus.textContent =
+                            `Mohon lengkapi ${totalQuestions - answeredQuestions} pertanyaan yang tersisa`;
+                        completionStatus.classList.remove('text-green-600', 'dark:text-green-400');
+                    }
                 }
             }
 
-            // --- EVENT LISTENER UNTUK PILIHAN JAWABAN ---
+
+            if (submitBtn) {
+                submitBtn.addEventListener('click', function(event) {
+                    event.preventDefault();
+
+                    const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
+                    let allAnswersAreF = true;
+
+                    if (checkedRadios.length !== totalQuestions) {
+                        form.reportValidity();
+                        return;
+                    }
+
+                    for (const radio of checkedRadios) {
+                        if (radio.value !== 'F') {
+                            allAnswersAreF = false;
+                            break;
+                        }
+                    }
+
+                    // Definisikan kelas untuk setiap state tombol
+                    const primaryClasses = ['bg-gradient-to-r', 'from-sky-500', 'to-blue-600',
+                        'hover:from-sky-600', 'hover:to-blue-700', 'text-white'
+                    ];
+                    const secondaryClasses = ['bg-gray-200', 'dark:bg-slate-600', 'hover:bg-gray-300',
+                        'dark:hover:bg-slate-500', 'text-gray-800', 'dark:text-gray-200'
+                    ];
+                    const disabledClasses = ['opacity-50', 'cursor-not-allowed'];
+
+                    if (allAnswersAreF) {
+                        // KONDISI: SEMUA JAWABAN 'F' -> Tombol 'Setuju' menjadi utama
+                        confirmYesButton.disabled = false;
+                        confirmYesButton.classList.remove(...disabledClasses, ...secondaryClasses);
+                        confirmYesButton.classList.add(...primaryClasses);
+                        confirmYesButton.title = "Konfirmasi persetujuan karena semua kriteria terpenuhi.";
+
+                        confirmNoButton.disabled = true;
+                        confirmNoButton.classList.remove(...primaryClasses);
+                        confirmNoButton.classList.add(...secondaryClasses, ...disabledClasses);
+                        confirmNoButton.title = "Tidak dapat dipilih karena semua jawaban adalah 'F'.";
+
+                    } else {
+                        // KONDISI: TIDAK SEMUA JAWABAN 'F' -> Tombol 'Tidak Setuju' menjadi utama
+                        confirmNoButton.disabled = false;
+                        confirmNoButton.classList.remove(...disabledClasses, ...secondaryClasses);
+                        confirmNoButton.classList.add(...primaryClasses); // Beri warna biru
+                        confirmNoButton.title = "Konfirmasi bahwa level ini belum tercapai sepenuhnya.";
+
+                        confirmYesButton.disabled = true;
+                        confirmYesButton.classList.remove(...primaryClasses);
+                        confirmYesButton.classList.add(...secondaryClasses, ...disabledClasses);
+                        confirmYesButton.title = "Tidak dapat dipilih karena tidak semua jawaban 'F'.";
+                    }
+                    showModal();
+                });
+            }
+
+            // --- [TAMBAHAN] Atur Tampilan Pilihan yang Sudah Ada Saat Halaman Dimuat ---
+            document.querySelectorAll('input[type="radio"]:checked').forEach(checkedRadio => {
+                // Tambahkan class 'selected' pada label dari radio button yang sudah terpilih
+                const parentLabel = checkedRadio.closest('.option-button');
+                if (parentLabel) {
+                    parentLabel.classList.add('selected');
+                }
+
+                // Tandai juga card-nya sebagai sudah terjawab
+                const parentCard = checkedRadio.closest('.question-card');
+                if (parentCard && !parentCard.classList.contains('answered')) {
+                    parentCard.classList.add('answered');
+                    answeredQuestions++; // Update counter agar progress bar sesuai
+                }
+            });
+            // Panggil updateProgress sekali di awal untuk menginisialisasi bar dan tombol submit
+            updateProgress();
+            // --- Akhir Tambahan ---
+
+
+            // --- EVENT LISTENER UNTUK PILIHAN JAWABAN (saat diklik) ---
             document.querySelectorAll('input[type="radio"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     const questionCard = this.closest('.question-card');
-                    const questionId = questionCard.getAttribute('data-question-id');
-                    const optionButtons = questionCard.querySelectorAll('.option-button');
-                    const indicator = document.getElementById(`indicator-${questionId}`);
 
+                    // Hapus 'selected' dari semua tombol di kartu ini
+                    const optionButtons = questionCard.querySelectorAll('.option-button');
                     optionButtons.forEach(btn => btn.classList.remove('selected'));
+
+                    // Tambahkan 'selected' ke tombol yang baru diklik
                     this.closest('.option-button').classList.add('selected');
 
                     if (!questionCard.classList.contains('answered')) {
                         questionCard.classList.add('answered');
-                        indicator.classList.remove('hidden');
-                        indicator.classList.add('inline-flex');
                         answeredQuestions++;
                     }
                     updateProgress();
                 });
             });
 
-            // --- [FIX] LOGIKA UTAMA UNTUK SUBMIT FORM DAN MODAL ---
-
-            // 1. Saat tombol "Kirim" di-klik
+            // --- [LOGIKA BARU] SAAT TOMBOL KIRIM DIKLIK ---
             submitBtn.addEventListener('click', function(event) {
-                // Mencegah form terkirim secara langsung
                 event.preventDefault();
 
-                // Cek validitas form secara manual (meski tombol sudah enable, ini pengaman ganda)
-                if (!form.checkValidity()) {
-                    form.reportValidity(); // Tampilkan pesan error browser jika ada yang belum diisi
+                // 1. Cek apakah semua jawaban yang dipilih adalah 'F'
+                const checkedRadios = document.querySelectorAll('input[type="radio"]:checked');
+                let allAnswersAreF = true;
+
+                // Pastikan semua pertanyaan sudah dijawab sebelum pengecekan
+                if (checkedRadios.length !== totalQuestions) {
+                    form.reportValidity();
                     return;
                 }
 
-                // Jika valid, tampilkan modal konfirmasi
+                for (const radio of checkedRadios) {
+                    if (radio.value !== 'F') {
+                        allAnswersAreF = false;
+                        break; // Keluar dari loop jika sudah ditemukan satu jawaban bukan 'F'
+                    }
+                }
+
+                // 2. Atur kondisi tombol di dalam modal berdasarkan hasil pengecekan
+                const disabledClasses = ['opacity-50', 'cursor-not-allowed'];
+                const enabledClassesYes = ['bg-gradient-to-r', 'from-sky-500', 'to-blue-600',
+                    'hover:from-sky-600', 'hover:to-blue-700'
+                ];
+                const enabledClassesNo = ['bg-gray-200', 'dark:bg-slate-600', 'hover:bg-gray-300',
+                    'dark:hover:bg-slate-500'
+                ];
+
+
+                if (allAnswersAreF) {
+                    // KONDISI: SEMUA JAWABAN 'F' -> HANYA BOLEH SETUJU
+                    confirmYesButton.disabled = false;
+                    confirmYesButton.classList.remove(...disabledClasses);
+                    confirmYesButton.classList.add(...enabledClassesYes);
+                    confirmYesButton.title = "Konfirmasi persetujuan karena semua kriteria terpenuhi.";
+
+                    confirmNoButton.disabled = true;
+                    confirmNoButton.classList.add(...disabledClasses);
+                    confirmNoButton.classList.remove(...enabledClassesNo);
+                    confirmNoButton.title = "Tidak dapat dipilih karena semua jawaban adalah 'F'.";
+
+                } else {
+                    // KONDISI: ADA JAWABAN BUKAN 'F' -> HANYA BOLEH TIDAK SETUJU
+                    confirmYesButton.disabled = true;
+                    confirmYesButton.classList.add(...disabledClasses);
+                    confirmYesButton.classList.remove(...enabledClassesYes);
+                    confirmYesButton.title = "Tidak dapat dipilih karena tidak semua jawaban 'F'.";
+
+                    confirmNoButton.disabled = false;
+                    confirmNoButton.classList.remove(...disabledClasses);
+                    confirmNoButton.classList.add(...enabledClassesNo);
+                    confirmNoButton.title = "Konfirmasi bahwa level ini belum tercapai sepenuhnya.";
+                }
+
+                // 3. Tampilkan modal setelah tombol diatur
                 showModal();
             });
 
-            // 2. Saat tombol "Tidak Setuju" di modal di-klik
-            confirmNoButton.addEventListener('click', function() {
-                hideModal(); // Cukup tutup modal
-            });
+            // --- [MODIFIKASI] LOGIKA TOMBOL MODAL ---
 
-            // 3. Saat tombol "Setuju" di modal di-klik
+            // Tombol "Setuju"
             confirmYesButton.addEventListener('click', function() {
-                // Ubah nilai input tersembunyi menjadi 'setuju'
-                if (userConfirmationInput) {
-                    userConfirmationInput.value = 'setuju';
-                }
-
-                // Tampilkan status loading pada tombol kirim
-                submitBtn.innerHTML = `
-                <span class="flex items-center">
-                    <svg class="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Mengirim...
-                </span>
-            `;
-                submitBtn.disabled = true;
-
-                // Kirim form secara programmatic
+                if (this.disabled) return; // Abaikan klik jika tombol nonaktif
+                userConfirmationInput.value = 'setuju';
                 form.submit();
             });
+
+            // Tombol "Tidak Setuju"
+            confirmNoButton.addEventListener('click', function() {
+                if (this.disabled) return; // Abaikan klik jika tombol nonaktif
+                userConfirmationInput.value = 'tidak_setuju';
+                form.submit();
+            });
+            // Tombol 'X' untuk menutup modal
+            closeModalBtn.addEventListener('click', hideModal);
         });
     </script>
 </x-app-layout>
